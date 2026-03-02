@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['"Source Sans 3"', '"Inter"', 'system-ui', 'sans-serif'],
+        heading: ['"Inter"', 'system-ui', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,6 +60,25 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        status: {
+          pending: "hsl(var(--status-pending))",
+          "pending-bg": "hsl(var(--status-pending-bg))",
+          "pending-foreground": "hsl(var(--status-pending-foreground))",
+          approved: "hsl(var(--status-approved))",
+          "approved-bg": "hsl(var(--status-approved-bg))",
+          "approved-foreground": "hsl(var(--status-approved-foreground))",
+          rejected: "hsl(var(--status-rejected))",
+          "rejected-bg": "hsl(var(--status-rejected-bg))",
+          "rejected-foreground": "hsl(var(--status-rejected-foreground))",
+          released: "hsl(var(--status-released))",
+          "released-bg": "hsl(var(--status-released-bg))",
+          "released-foreground": "hsl(var(--status-released-foreground))",
+        },
+        stepper: {
+          active: "hsl(var(--stepper-active))",
+          complete: "hsl(var(--stepper-complete))",
+          inactive: "hsl(var(--stepper-inactive))",
         },
       },
       borderRadius: {
