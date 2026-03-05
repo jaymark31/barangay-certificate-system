@@ -26,9 +26,12 @@ const Register = () => {
     setLoading(true);
     try {
       await register({ name, email, password });
-      navigate('/resident/dashboard');
-    } catch {
-      toast({ title: 'Registration Failed', description: 'Something went wrong.', variant: 'destructive' });
+      toast({ title: 'Account created', description: 'You have been registered successfully. Welcome!' });
+      navigate('/resident/dashboard'); // residents go to resident dashboard
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      const message = ax?.data?.message ?? (err instanceof Error ? err.message : 'Something went wrong.');
+      toast({ title: 'Registration Failed', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

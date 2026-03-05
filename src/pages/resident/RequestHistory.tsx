@@ -1,23 +1,48 @@
-import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { MOCK_REQUESTS } from '@/services/mockData';
+import { useState, useEffect } from 'react';
+import { mapApiRequestToCertRequest } from '@/lib/requestMap';
 import { StatusBadge } from '@/components/StatusBadge';
 import { RequestDetailsModal } from '@/components/RequestDetailsModal';
 import { CertificateRequest } from '@/services/mockData';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { requestService } from '@/services/api';
 
 const RequestHistory = () => {
-  const { user } = useAuth();
+  const [requests, setRequests] = useState<CertificateRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<CertificateRequest | null>(null);
-  const myRequests = MOCK_REQUESTS.filter(r => r.residentId === user?.id);
+
+  useEffect(() => {
+    requestService
+      .getMyRequests()
+      .then((res) => {
+        const list = res.data?.requests ?? [];
+        setRequests(list.map(mapApiRequestToCertRequest));
+      })
+      .catch(() => setRequests([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const openDetail = (req: CertificateRequest) => {
+    requestService
+      .getById(req.id)
+      .then((res) => {
+        const r = res.data?.data?.request;
+        if (r) setSelectedRequest(mapApiRequestToCertRequest(r));
+      })
+      .catch(() => setSelectedRequest(req));
+  };
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold font-heading">Request History</h1>
 
       <div className="rounded-lg border bg-card gov-shadow">
-        {myRequests.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading...
+          </div>
+        ) : requests.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileText className="h-12 w-12 mb-3 opacity-30" />
             <p>No requests found</p>
@@ -35,14 +60,18 @@ const RequestHistory = () => {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {myRequests.map((req) => (
+                {requests.map((req) => (
                   <tr key={req.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4 font-medium">{req.id}</td>
                     <td className="px-6 py-4">{req.certificateTypeName}</td>
                     <td className="px-6 py-4 text-muted-foreground">{req.dateRequested}</td>
-                    <td className="px-6 py-4"><StatusBadge status={req.status} /></td>
                     <td className="px-6 py-4">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedRequest(req)}>View</Button>
+                      <StatusBadge status={req.status} />
+                    </td>
+                    <td className="px-6 py-4">
+                      <Button variant="outline" size="sm" onClick={() => openDetail(req)}>
+                        View
+                      </Button>
                     </td>
                   </tr>
                 ))}

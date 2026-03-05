@@ -4,7 +4,9 @@ import { StatusBadge } from './StatusBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Download, User, Calendar, CheckCircle, XCircle, Package } from 'lucide-react';
+import { FileText, Download, User, Calendar, CheckCircle, XCircle, Package, Pencil, Loader2 } from 'lucide-react';
+import { certificateDocService } from '@/services/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface RequestDetailsModalProps {
   request: CertificateRequest | null;
@@ -21,6 +23,12 @@ export const RequestDetailsModal = ({
 }: RequestDetailsModalProps) => {
   const [remarks, setRemarks] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [showCertEditor, setShowCertEditor] = useState(false);
+  const [certContent, setCertContent] = useState('');
+  const [certLoading, setCertLoading] = useState(false);
+  const [certSaving, setCertSaving] = useState(false);
+  const [certDownloading, setCertDownloading] = useState(false);
+  const { toast } = useToast();
 
   if (!request) return null;
 
@@ -30,6 +38,95 @@ export const RequestDetailsModal = ({
       setRemarks('');
       setShowRejectForm(false);
       onClose();
+    }
+  };
+
+  const loadCertificate = async () => {
+    setCertLoading(true);
+    try {
+      const res = await certificateDocService.getByRequestId(request.id);
+      const content = res.data?.data?.certificate?.content ?? '';
+      setCertContent(content);
+      setShowCertEditor(true);
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      toast({ title: 'Failed to load certificate', description: ax?.data?.message ?? 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setCertLoading(false);
+    }
+  };
+
+  const saveCertificate = async () => {
+    setCertSaving(true);
+    try {
+      await certificateDocService.updateByRequestId(request.id, certContent);
+      toast({ title: 'Certificate saved' });
+      setShowCertEditor(false);
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      toast({ title: 'Save failed', description: ax?.data?.message ?? 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setCertSaving(false);
+    }
+  };
+
+  const downloadCertificatePdf = async () => {
+    setCertDownloading(true);
+    try {
+      const res = await certificateDocService.downloadPdfByRequestId(request.id);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${request.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      toast({ title: 'Download failed', description: ax?.data?.message ?? 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setCertDownloading(false);
+    }
+  };
+
+  const downloadCertificateDocx = async () => {
+    setCertDownloading(true);
+    try {
+      const res = await certificateDocService.downloadDocxByRequestId(request.id);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${request.id}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Opened in Word', description: 'The DOCX was downloaded. Open it in Microsoft Word to edit.' });
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      toast({ title: 'DOCX download failed', description: ax?.data?.message ?? 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setCertDownloading(false);
+    }
+  };
+
+  const uploadEditedDocx = async (file: File) => {
+    setCertSaving(true);
+    try {
+      await certificateDocService.uploadDocxByRequestId(request.id, file);
+      toast({ title: 'Certificate updated', description: 'Your Word edits were saved to the database.' });
+      await loadCertificate();
+      setShowCertEditor(false);
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      toast({ title: 'Upload failed', description: ax?.data?.message ?? 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setCertSaving(false);
     }
   };
 
@@ -112,6 +209,61 @@ export const RequestDetailsModal = ({
             </div>
           )}
 
+          {/* Certificate (Admin) */}
+          {isAdmin && (request.status === 'approved' || request.status === 'released') && (
+            <div className="rounded-lg border bg-muted/10 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Certificate</p>
+                  <p className="text-xs text-muted-foreground">Edit in Word (DOCX) or edit here, then download as PDF.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={downloadCertificateDocx} disabled={certDownloading}>
+                    {certDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Edit in Word
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={loadCertificate} disabled={certLoading}>
+                    {certLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pencil className="mr-2 h-4 w-4" />}
+                    Edit here
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadCertificatePdf} disabled={certDownloading}>
+                    {certDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+
+              {showCertEditor && (
+                <div className="space-y-2">
+                  <Textarea value={certContent} onChange={(e) => setCertContent(e.target.value)} className="min-h-[220px]" />
+                  <div className="flex gap-2 justify-end">
+                    <label className="mr-auto">
+                      <input
+                        type="file"
+                        accept=".docx"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadEditedDocx(f);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                      <Button type="button" variant="outline" disabled={certSaving}>
+                        {certSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Upload edited DOCX
+                      </Button>
+                    </label>
+                    <Button variant="outline" onClick={() => setShowCertEditor(false)} disabled={certSaving}>Cancel</Button>
+                    <Button onClick={saveCertificate} disabled={certSaving || !certContent.trim()}>
+                      {certSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Admin Actions */}
           {isAdmin && (
             <div className="flex flex-col gap-3 border-t pt-4">
@@ -153,7 +305,8 @@ export const RequestDetailsModal = ({
 
           {/* Resident Download */}
           {!isAdmin && request.status === 'released' && (
-            <Button className="w-full">
+            <Button className="w-full" onClick={downloadCertificatePdf} disabled={certDownloading}>
+              {certDownloading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Download className="mr-2 h-4 w-4" /> Download Certificate
             </Button>
           )}

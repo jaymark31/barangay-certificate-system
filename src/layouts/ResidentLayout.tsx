@@ -25,12 +25,9 @@ export const ResidentLayout = () => {
       <header className="sticky top-0 z-50 border-b bg-card gov-shadow">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <FileText className="h-5 w-5 text-primary-foreground" />
-            </div>
             <div>
               <h1 className="text-lg font-bold font-heading text-foreground leading-tight">BCMS</h1>
-              <p className="text-[10px] text-muted-foreground leading-tight hidden sm:block">Barangay Certificate Management</p>
+              <p className="text-[10px] text-muted-foreground leading-tight hidden sm:block">Barangay Certificate Management System</p>
             </div>
           </div>
 

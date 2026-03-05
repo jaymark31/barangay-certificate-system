@@ -1,0 +1,94 @@
+/* Print: show only the certificate, hide UI and buttons */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .certificate-print-area,
+  .certificate-print-area * {
+    visibility: visible;
+  }
+
+  .certificate-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 210mm;
+    margin: 0;
+    padding: 15mm;
+    box-shadow: none;
+    border: none;
+    background: white;
+    font-family: "Times New Roman", serif;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+.certificate {
+  font-family: "Times New Roman", serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: black;
+}
+
+.certificate .header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-top: 0.5rem;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.certificate .header .logo {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+
+.certificate .header .header-text {
+  width: 100%;
+}
+
+.certificate .header p {
+  margin: 0;
+  line-height: 1.25;
+}
+
+.certificate .header h2 {
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 15pt;
+  margin: 0.4rem 0;
+}
+
+.certificate .title {
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 18pt;
+  margin: 3rem 0;
+}
+
+.certificate .body {
+  text-align: justify;
+  margin-bottom: 2rem;
+}
+
+.certificate .body p {
+  margin-bottom: 1rem;
+}
+
+.certificate .footer {
+  margin-top: 4rem;
+}

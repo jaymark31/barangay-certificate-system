@@ -19,13 +19,13 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      // AuthContext sets user, we check role to redirect
-      const stored = localStorage.getItem('bcms_user');
-      const user = stored ? JSON.parse(stored) : null;
-      navigate(user?.role === 'admin' ? '/admin/dashboard' : '/resident/dashboard');
-    } catch {
-      toast({ title: 'Login Failed', description: 'Invalid email or password.', variant: 'destructive' });
+      const user = await login(email, password);
+      toast({ title: 'Login successful', description: `Welcome back, ${user.name}!` });
+      navigate(user.role === 'admin' ? '/admin/dashboard' : '/resident/dashboard');
+    } catch (err: unknown) {
+      const ax = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response : undefined;
+      const message = ax?.data?.message ?? (err instanceof Error ? err.message : 'Invalid email or password.');
+      toast({ title: 'Login failed', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ const Login = () => {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary gov-shadow-md">
             <FileText className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold font-heading text-foreground">Barangay Certificate<br/>Management System</h1>
+          <h1 className="mt-4 text-2xl font-bold font-heading text-foreground">Barangay Certificate<br />Management System</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
         </div>
 
@@ -58,11 +58,8 @@ const Login = () => {
             Sign In
           </Button>
 
-          {/* Demo credentials */}
-          <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold">Demo Credentials:</p>
-            <p>Admin: admin@bcms.gov / admin123</p>
-            <p>Resident: resident@example.com / resident123</p>
+          <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+            <p>Sign in with an account you registered, or use demo accounts if the database was seeded.</p>
           </div>
         </form>
 

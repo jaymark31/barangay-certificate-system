@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { authService } from '@/services/api';
 
 export type UserRole = 'resident' | 'admin';
 
@@ -15,64 +15,66 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { name: string; email: string; password: string }) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: { name: string; email: string; password: string }) => Promise<User>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo
-const MOCK_USERS: Record<string, User & { password: string }> = {
-  'admin@bcms.gov': { id: '1', email: 'admin@bcms.gov', name: 'Admin Staff', role: 'admin', password: 'admin123' },
-  'resident@example.com': { id: '2', email: 'resident@example.com', name: 'Juan Dela Cruz', role: 'resident', password: 'resident123' },
-};
+const mapApiUserToAppUser = (u: { id: string; email: string; full_name?: string; name?: string; role?: string }, fallbackName?: string): User => ({
+  id: String(u.id),
+  email: u.email,
+  name: u.full_name ?? u.name ?? fallbackName ?? '',
+  role: (u.role?.toLowerCase() ?? 'resident') as UserRole,
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('bcms_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('bcms_user');
-      }
+    let cancelled = false;
+    authService
+      .getMe()
+      .then((res) => {
+        if (cancelled) return;
+        const u = res.data?.data?.user;
+        setUser(u ? mapApiUserToAppUser(u) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
+    const res = await authService.login(email, password);
+    const u = res.data?.data?.user;
+    if (!u) throw new Error('Invalid response');
+    const userData = mapApiUserToAppUser(u);
+    setUser(userData);
+    return userData;
+  }, []);
+
+  const register = useCallback(async (data: { name: string; email: string; password: string }): Promise<User> => {
+    const res = await authService.register(data);
+    const u = res.data?.data?.user;
+    if (!u) throw new Error('Invalid response');
+    const userData = mapApiUserToAppUser(u, data.name);
+    setUser(userData);
+    return userData;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setUser(null);
     }
-    setIsLoading(false);
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 800));
-    const found = MOCK_USERS[email];
-    if (found && found.password === password) {
-      const { password: _, ...userData } = found;
-      setUser(userData);
-      localStorage.setItem('bcms_user', JSON.stringify(userData));
-      setIsLoading(false);
-    } else {
-      setIsLoading(false);
-      throw new Error('Invalid email or password');
-    }
-  }, []);
-
-  const register = useCallback(async (data: { name: string; email: string; password: string }) => {
-    setIsLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    const newUser: User = { id: Date.now().toString(), email: data.email, name: data.name, role: 'resident' };
-    MOCK_USERS[data.email] = { ...newUser, password: data.password };
-    setUser(newUser);
-    localStorage.setItem('bcms_user', JSON.stringify(newUser));
-    setIsLoading(false);
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem('bcms_user');
   }, []);
 
   return (

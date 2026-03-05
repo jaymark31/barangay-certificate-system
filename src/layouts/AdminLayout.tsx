@@ -32,9 +32,7 @@ export const AdminLayout = () => {
         <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-                <FileText className="h-4 w-4 text-sidebar-primary-foreground" />
-              </div>
+              <img src="/barangay-logo.jpg" alt="Logo" className="w-8 h-8 object-contain rounded-md" />
               <span className="text-sm font-bold text-sidebar-foreground">BCMS Admin</span>
             </div>
           )}
@@ -90,7 +88,10 @@ export const AdminLayout = () => {
           <div className="absolute inset-0 bg-foreground/30" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-64 bg-sidebar flex flex-col">
             <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-              <span className="text-sm font-bold text-sidebar-foreground">BCMS Admin</span>
+              <div className="flex items-center gap-2">
+                <img src="/barangay-logo.jpg" alt="Logo" className="w-8 h-8 object-contain rounded-md" />
+                <span className="text-sm font-bold text-sidebar-foreground">BCMS Admin</span>
+              </div>
               <button onClick={() => setMobileOpen(false)} className="text-sidebar-foreground">
                 <X className="h-5 w-5" />
               </button>
