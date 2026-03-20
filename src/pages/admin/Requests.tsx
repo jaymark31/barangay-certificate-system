@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CertificateRequest } from '@/services/mockData';
 import { mapApiRequestToCertRequest } from '@/lib/requestMap';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -17,13 +18,16 @@ interface CertTypeFromApi {
 }
 
 const AdminRequests = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status')?.toLowerCase() || 'all';
+  
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<CertificateRequest | null>(null);
   const [certificateRequest, setCertificateRequest] = useState<CertificateRequest | null>(null);
   const [certificateAutoPrint, setCertificateAutoPrint] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [certTypes, setCertTypes] = useState<CertTypeFromApi[]>([]);
   const { toast } = useToast();
@@ -131,7 +135,20 @@ const AdminRequests = () => {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select 
+          value={statusFilter} 
+          onValueChange={(val) => {
+            setStatusFilter(val);
+            setSearchParams(prev => {
+              if (val === 'all') {
+                prev.delete('status');
+              } else {
+                prev.set('status', val);
+              }
+              return prev;
+            });
+          }}
+        >
           <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>

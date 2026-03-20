@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MOCK_REQUESTS, CertificateRequest } from '@/services/mockData';
 import { requestService } from '@/services/api';
 import { mapApiRequestToCertRequest } from '@/lib/requestMap';
 import { StatCard } from '@/components/StatCard';
 import { StatusBadge } from '@/components/StatusBadge';
+import { useToast } from '@/hooks/use-toast';
 import { FileText, Clock, CheckCircle, XCircle, Package, TrendingUp, Loader2, RefreshCw, BarChart3, PieChartIcon } from 'lucide-react';
 import { 
   Bar, 
@@ -16,7 +18,10 @@ import {
   Cell,
   LabelList,
   Area,
-  AreaChart
+  AreaChart,
+  Line,
+  LineChart,
+  Dot
 } from 'recharts';
 import { 
   ChartConfig, 
@@ -28,8 +33,11 @@ import {
 } from '@/components/ui/chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -103,16 +111,16 @@ const AdminDashboard = () => {
   }, {} as Record<string, number>);
 
   const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const trendData = Object.entries(monthlyCounts)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => monthOrder.indexOf(a.name) - monthOrder.indexOf(b.name));
+  const trendData = monthOrder.map(m => ({
+    name: m,
+    count: monthlyCounts[m] || 0
+  }));
 
   const topCertificate = typeData[0]?.fullName || 'N/A';
-  const peakMonth = trendData.length > 0 
-    ? [...trendData].sort((a, b) => b.count - a.count)[0].name 
-    : 'N/A';
+  const peakMonth = [...trendData].sort((a, b) => b.count - a.count)[0]?.name || 'N/A';
 
   return (
+    <TooltipProvider delayDuration={100}>
     <div className="max-w-[1600px] mx-auto space-y-4 p-4 lg:p-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -161,7 +169,7 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2">
               {/* Mini Column Chart */}
               <div className="p-4 border-r border-black/5">
-                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-4">By Processing Stage</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-4">By Processing Stage (Click to view)</p>
                 <ChartContainer config={chartConfig} className="h-[180px] w-full">
                   <BarChart data={statusData}>
                     <defs>
@@ -172,24 +180,41 @@ const AdminDashboard = () => {
                     </defs>
                     <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={9} />
                     <YAxis hide />
-                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={30}>
-                      {statusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={`url(#${entry.gradientId})`} />))}
+                    <ChartTooltip cursor={{ fill: 'rgba(0,0,0,0.05)', radius: 4 }} content={<ChartTooltipContent hideLabel />} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={30} className="cursor-pointer">
+                      {statusData.map((entry, index) => {
+                        const statusMap: Record<string, string> = { "Pend": "pending", "Appr": "approved", "Rej": "rejected", "Rel": "released" };
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={`url(#${entry.gradientId})`} 
+                            onClick={() => navigate(`/admin/requests?status=${statusMap[entry.name]}`)}
+                          />
+                        );
+                      })}
                     </Bar>
                   </BarChart>
                 </ChartContainer>
               </div>
-              {/* Mini Trend Chart */}
+              {/* Zigzag Trend Chart */}
               <div className="p-4">
-                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-4">Monthly Activity</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-4">Yearly Operational Trends (2026)</p>
                 <ChartContainer config={chartConfig} className="h-[180px] w-full">
-                  <AreaChart data={trendData}>
-                    <defs><linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient></defs>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                     <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={9} />
                     <YAxis hide />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#colorTrend)" />
-                  </AreaChart>
+                    <Line 
+                      type="linear" 
+                      dataKey="count" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4, stroke: 'white' }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                      animationDuration={1500}
+                    />
+                  </LineChart>
                 </ChartContainer>
               </div>
             </div>
@@ -206,8 +231,15 @@ const AdminDashboard = () => {
           <CardContent className="relative flex items-center justify-center p-2">
             <ChartContainer config={chartConfig} className="h-[210px] w-full">
               <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={70} paddingAngle={4}>
-                  {pieData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} fillOpacity={0.8} />))}
+                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={70} paddingAngle={4} className="cursor-pointer">
+                  {pieData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.fill} 
+                      fillOpacity={0.8} 
+                      onClick={() => navigate(`/admin/requests?status=${entry.name.toLowerCase()}`)}
+                    />
+                  ))}
                 </Pie>
                 <ChartLegend content={<ChartLegendContent />} className="text-[8px]" />
               </PieChart>
@@ -257,21 +289,35 @@ const AdminDashboard = () => {
                 </div>
              </div>
              <div className="p-4 flex flex-col justify-center">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Demand by Type</p>
-                <ChartContainer config={chartConfig} className="h-[120px] w-full">
-                    <BarChart layout="vertical" data={typeData} margin={{ left: -20 }}>
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" hide />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} barSize={12}>
-                            <LabelList dataKey="name" position="insideLeft" style={{ fill: 'white', fontSize: '8px' }} />
-                        </Bar>
-                    </BarChart>
-                </ChartContainer>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2">Demand by Type (Hover for top)</p>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div>
+                            <ChartContainer config={chartConfig} className="h-[120px] w-full cursor-help">
+                                <BarChart 
+                                  layout="vertical" 
+                                  data={typeData} 
+                                  margin={{ left: -20 }}
+                                >
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="name" type="category" hide />
+                                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 2, 2, 0]} barSize={12}>
+                                        <LabelList dataKey="name" position="insideLeft" style={{ fill: 'white', fontSize: '8px' }} />
+                                    </Bar>
+                                </BarChart>
+                            </ChartContainer>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="bg-primary text-primary-foreground font-bold p-2 text-xs">
+                        Most Requested: {topCertificate}
+                    </TooltipContent>
+                </Tooltip>
              </div>
           </div>
         </Card>
       </div>
     </div>
+    </TooltipProvider>
   );
 };
 
