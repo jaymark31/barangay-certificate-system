@@ -87,12 +87,14 @@ const AdminDashboard = () => {
     count,
   })).sort((a, b) => b.count - a.count).slice(0, 5);
 
-  const pieData = [
-    { name: 'Pending', value: pending, fill: "#f59e0b" },
-    { name: 'Approved', value: approved, fill: "#10b981" },
-    { name: 'Rejected', value: rejected, fill: "#ef4444" },
-    { name: 'Released', value: released, fill: "#3b82f6" },
-  ];
+  const pieDataTypes = Object.entries(typeCounts).map(([name, count], index) => {
+    const colors = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+    return {
+      name,
+      value: count,
+      fill: colors[index % colors.length]
+    };
+  }).sort((a, b) => b.value - a.value).slice(0, 5);
 
   const chartConfig = {
     count: { label: "Requests" },
@@ -221,34 +223,27 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Status Pie - smaller */}
+        {/* Top Certificates Pie - renamed from Ratio */}
         <Card className="gov-shadow border-none bg-white/70 backdrop-blur-sm">
           <CardHeader className="py-3 px-4 border-b border-black/5">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <PieChartIcon className="h-4 w-4 text-primary" /> Ratio
+              <PieChartIcon className="h-4 w-4 text-primary" /> Top Pick Certificates
             </CardTitle>
           </CardHeader>
           <CardContent className="relative flex items-center justify-center p-2">
             <ChartContainer config={chartConfig} className="h-[210px] w-full">
               <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={70} paddingAngle={4} className="cursor-pointer">
-                  {pieData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.fill} 
-                      fillOpacity={0.8} 
-                      onClick={() => navigate(`/admin/requests?status=${entry.name.toLowerCase()}`)}
-                    />
-                  ))}
+                <Pie data={pieDataTypes} dataKey="value" nameKey="name" innerRadius={0} outerRadius={85} paddingAngle={2}>
+                  {pieDataTypes.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.fill} fillOpacity={0.8} />))}
                 </Pie>
-                <ChartLegend content={<ChartLegendContent />} className="text-[8px]" />
+                <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                <ChartLegend content={<ChartLegendContent />} className="text-[7px] mt-4" />
               </PieChart>
             </ChartContainer>
-            <div className="absolute top-[44%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <span className="text-xl font-extrabold block">{total}</span>
-              <span className="text-[7px] uppercase font-bold text-muted-foreground tracking-tighter">Requests</span>
-            </div>
           </CardContent>
+          <div className="px-4 pb-3 text-center border-t border-black/5 mt-2 pt-2">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tighter">Total Documents Distributed: <span className="text-primary">{total}</span></p>
+          </div>
         </Card>
       </div>
 
